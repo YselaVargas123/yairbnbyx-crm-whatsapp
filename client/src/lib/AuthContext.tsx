@@ -23,9 +23,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // así que si la empresa no configuró nada no cambia nada.
 function aplicarColoresDeMarca(empresa: Empresa | null) {
   const raiz = document.documentElement.style;
-  if (empresa?.color_primario) raiz.setProperty('--marca-primario', empresa.color_primario);
+  if (empresa?.color_primario && luminancia(empresa.color_primario) !== null) raiz.setProperty('--marca-primario', empresa.color_primario);
   else raiz.removeProperty('--marca-primario');
-  if (empresa?.color_acento) raiz.setProperty('--marca-acento', empresa.color_acento);
+  if (empresa?.color_acento && luminancia(empresa.color_acento) !== null) raiz.setProperty('--marca-acento', empresa.color_acento);
   else raiz.removeProperty('--marca-acento');
   // El texto sobre el acento (--accent-fg) se elige según qué tan claro sea el
   // color de la empresa; si no, un acento claro deja botones blanco sobre blanco.

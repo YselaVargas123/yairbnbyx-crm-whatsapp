@@ -7,12 +7,16 @@ import { NAVY, TEAL, BORDE, SOMBRA_CARD, TEXTO_PRIMARIO, TEXTO_SECUNDARIO, TEXTO
 import LogoEmpresa from '../../components/LogoEmpresa';
 
 const PRIMARIO_DEFECTO = '#0B1B33';
-const ACENTO_DEFECTO = 'var(--accent)';
+const ACENTO_DEFECTO = '#16809a';
+
+function colorInicial(valor: string | null | undefined, defecto: string): string {
+  return valor && /^#[0-9a-f]{6}$/i.test(valor) ? valor : defecto;
+}
 
 export default function MiEmpresa() {
   const { empresa, recargarEmpresa } = useAuth();
-  const [colorPrimario, setColorPrimario] = useState(empresa?.color_primario || PRIMARIO_DEFECTO);
-  const [colorAcento, setColorAcento] = useState(empresa?.color_acento || ACENTO_DEFECTO);
+  const [colorPrimario, setColorPrimario] = useState(colorInicial(empresa?.color_primario, PRIMARIO_DEFECTO));
+  const [colorAcento, setColorAcento] = useState(colorInicial(empresa?.color_acento, ACENTO_DEFECTO));
   const [logoUrl, setLogoUrl] = useState(empresa?.logo_url || '');
   const [subiendoLogo, setSubiendoLogo] = useState(false);
   const [guardando, setGuardando] = useState(false);
