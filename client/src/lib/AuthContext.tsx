@@ -97,19 +97,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    let activo = true;
+    let recuperando = new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery';
+    const pendientes = new Set<ReturnType<typeof setTimeout>>();
+
+    const cargarSesion = async (session: Session | null) => {
+      if (!activo) return;
       setSesion(session);
-      await cargarPerfil(session);
-      setCargando(false);
+      if (recuperando && session) {
+        setModoRecuperacion(true);
+        setCargando(false);
+        return;
+      }
+      try {
+        await cargarPerfil(session);
+      } catch {
+        console.error('No se pudo cargar el perfil.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
+    // No esperar consultas a Supabase dentro de su callback de autenticación.
+    // La recuperación debe funcionar incluso si no se puede cargar el perfil.
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, session) => {
+      if (!activo) return;
+      if (evento === 'PASSWORD_RECOVERY') recuperando = true;
+      if (evento === 'SIGNED_OUT') {
+        recuperando = false;
+        setModoRecuperacion(false);
+      }
+      if (recuperando && session) {
+        setSesion(session);
+        setModoRecuperacion(true);
+        setCargando(false);
+        return;
+      }
+      const pendiente = setTimeout(() => {
+        pendientes.delete(pendiente);
+        void cargarSesion(session);
+      }, 0);
+      pendientes.add(pendiente);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (evento, session) => {
-      setSesion(session);
-      await cargarPerfil(session);
-      if (evento === 'PASSWORD_RECOVERY') setModoRecuperacion(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      void cargarSesion(session);
+    }).catch(() => {
+      if (activo) setCargando(false);
     });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      activo = false;
+      listener.subscription.unsubscribe();
+      pendientes.forEach(clearTimeout);
+    };
   }, []);
 
   const iniciarSesion = async (email: string, password: string) => {
@@ -123,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const actualizarContrasena = async (nuevaContrasena: string) => {
     const { error } = await supabase.auth.updateUser({ password: nuevaContrasena });
-    if (!error) setModoRecuperacion(false);
+    // Mantener montada la pantalla para mostrar la confirmación de éxito.
     return { error };
   };
 
